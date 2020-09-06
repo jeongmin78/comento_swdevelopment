@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <WinSock2.h>
 #include <io.h>
+#include <stddef.h>
 
 #pragma comment(lib,"ws2_32.lib") //Winsock Library
 #pragma warning(disable : 4996)
@@ -12,31 +13,36 @@
 
 struct _finddata_t td;
 
-struct DelayModule {
+typedef struct DelayModule {
 	char moduleName[30];
 	char errorName[30];
 	time_t errorTime;
-};
-struct ErrorModule {
+}DelayModule;
+typedef struct ErrorModule {
 	char moduleName[30];
 	char errorName[30];
 	time_t errorTime;
-};
-struct Errors {
+}ErrorModule;
+typedef struct Errors {
 	char moduleName[30];
 	char errorName[30];
 	time_t errorTime;
-};
-struct DelayModule dmList[MAX];
-struct ErrorModule emList[MAX];
+}Errors;
+
+DelayModule dmList[MAX];
+ErrorModule emList[MAX];
+Errors errorList[MAX];
+
 int count1;
 int count2;
 void addDelayModule(struct DelayModule* dm);
 void addErrorModule(struct ErrorModule* em);
 void print_day(struct tm* t); 
+int compare(const void* A, const void* B);
+void mergeErrors();
 
 void checkModuleUpdate() {
-	struct DelayModule dm;
+	DelayModule dm;
 	time_t now = time(NULL);
 	
 	struct _finddata_t fd;
@@ -66,7 +72,7 @@ void checkModuleUpdate() {
 	_findclose(handle);
 }
 void checkModuleError() {
-	struct ErrorModule em;
+	ErrorModule em;
 	int lineCount;
 	char buffer[MAX];
 	FILE* pfile = NULL;
@@ -101,14 +107,14 @@ void checkModuleError() {
 void addDelayModule(struct DelayModule *dm) {
 	strcpy(dmList[count1].moduleName, dm->moduleName);
 	dmList[count1].errorTime = dm->errorTime;
-	//printf("%s, %d\n",dmList[count].moduleName, dmList[count].errorTime);
+	//printf("%s, %lld\n",dmList[count1].moduleName, dmList[count1].errorTime);
 	count1++;
 }
 void addErrorModule(struct ErrorModule *em) {
 	strcpy(emList[count2].moduleName, em->moduleName);
-	strcpy(emList[count2].moduleName, em->errorName);
+	strcpy(emList[count2].errorName, em->errorName);
 	emList[count2].errorTime = em->errorTime;
-	printf("%s, %s, %lld\n",emList[count2].moduleName, emList[count2].errorName, emList[count2].errorTime);
+	//printf("%s, %s, %lld\n",emList[count2].moduleName, emList[count2].errorName, emList[count2].errorTime);
 	count2++;
 }
 
@@ -161,21 +167,42 @@ void tcpClient(char *IPaddress, char *portNumber)
 void removeErrors(struct Errors e) {
 
 }
-void mergeErrors(struct DelayModule dm, struct ErrorModule em) {
+void mergeErrors(){
+	int i;
+	qsort(emList, count2, sizeof(ErrorModule), compare);
+
+	for (i = 0; i < count1; i++) {
+		strcpy(errorList[i].moduleName, (dmList + i)->moduleName);
+		errorList[i].errorTime = (dmList + i)->errorTime;
+		//printf("d test : %s, %lld\n", (dmList + i)->moduleName, (dmList + i)->errorTime);
+	}
+	for (i = 0; i < count2; i++) {
+		strcpy(errorList[count1 + i].moduleName, (emList + i)->moduleName);
+		strcpy(errorList[count1 + i].errorName, (emList + i)->errorName);
+		errorList[count1 + i].errorTime = (emList + i)->errorTime;
+		//printf("e test : %s, %s %lld\n", (emList + i)->moduleName, (emList + i)->errorName, (emList + i)->errorTime);
+	}
+}
+int compare(const void* A, const void* B) {
+	ErrorModule* pa = (ErrorModule*)A;
+	ErrorModule* pb = (ErrorModule*)B;
+
+	if (pa->errorTime < pb->errorTime) return -1;
+	else if (pa->errorTime > pb->errorTime) return 1;
+	else return 0;
 }
 
-
-void main() 
+void main()
 {
 	int i;
-	//tcpClient("127.0.0.1","1234");
-	//checkModuleUpdate();
+	checkModuleUpdate();
 	checkModuleError();
-	//for(i=0; i<count1; i++){
-	//	printf("dm : %s, %s\n", (dmList+i)->moduleName, (dmList+i)->errorName); //print_day(dmList->errorTime);
-	//	//printf("em : %s, %s", emList->moduleName, emList->errorName); //print_day(emList->errorTime);
+	mergeErrors();
+	for (i = 0; i < count1 + count2; i++) {
+		printf("%s | %s | %lld\n",errorList[i].moduleName, errorList[i].errorName, errorList[i].errorTime);
+	}
+	//tcpClient("127.0.0.1","1234");
 
-	//}
 }
 
 void print_day(struct tm* t) {
