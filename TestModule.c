@@ -37,8 +37,8 @@ int count1;
 int count2;
 void addDelayModule(struct DelayModule* dm);
 void addErrorModule(struct ErrorModule* em);
-void print_day(struct tm* t); 
-int compare(const void* A, const void* B);
+//void print_day(struct tm* t); 
+int compare(const void* A, const void* B); //qsort 실행용
 void mergeErrors();
 
 void checkModuleUpdate() {
@@ -48,7 +48,7 @@ void checkModuleUpdate() {
 	struct _finddata_t fd;
 	long handle;
 	int result = 1;
-	handle = _findfirst(".\\*.txt", &fd);
+	handle = _findfirst(".\\*.txt", &fd); // .st
 	if (handle == -1)
 	{
 		printf("There were no files.\n");
@@ -79,13 +79,15 @@ void checkModuleError() {
 	struct _finddata_t fd;
 	long handle;
 	int result = 1;
+	errno_t err;
 	handle = _findfirst(".\\*.txt", &fd);
 	while (result != -1)
 	{
-		if (0 == fopen_s(&pfile , fd.name, "rt")) {//파일 오픈 성공
+		err = fopen_s(&pfile, fd.name, "rt");
+		if (err == 0) {//파일 오픈 성공
 			lineCount = 1;
-			while (fgets(buffer, 30, pfile) != NULL) { //개행제거
-				if (buffer[strlen(buffer) - 1] == '\n') {
+			while (fgets(buffer, 50, pfile) != NULL) { 
+				if (buffer[strlen(buffer) - 1] == '\n') {//개행제거
 					buffer[strlen(buffer) - 1] = '\0';
 				}
 				if (lineCount > 1) {
@@ -100,6 +102,7 @@ void checkModuleError() {
 			}
 			fclose(pfile);
 		}
+		else { puts("파일 오픈 실패\n"); }
 		result = _findnext(handle, &fd);
 	}
 	_findclose(handle);
@@ -195,16 +198,18 @@ int compare(const void* A, const void* B) {
 void main()
 {
 	int i;
-	checkModuleUpdate();
-	checkModuleError();
-	mergeErrors();
-	for (i = 0; i < count1 + count2; i++) {
-		printf("%s | %s | %lld\n",errorList[i].moduleName, errorList[i].errorName, errorList[i].errorTime);
+	while(1){
+		checkModuleUpdate();
+		checkModuleError();
+		mergeErrors();
+		for (i = 0; i < count1 + count2; i++) {
+			printf("%s | %s | %lld\n",errorList[i].moduleName, errorList[i].errorName, errorList[i].errorTime);
+		}
+		printf("=======================================\n");
+		//tcpClient("127.0.0.1","1234");
+		_sleep(3000);
 	}
-	//tcpClient("127.0.0.1","1234");
-
 }
-
 void print_day(struct tm* t) {
 	printf("%d/%d/%d %d:%d:%d\n", 1900 + t->tm_year, t->tm_mon+1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec);
 }
